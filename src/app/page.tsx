@@ -24,30 +24,17 @@ export default function Home() {
 
   const { data, error, isLoading } = useSWR(`https://reqres.in/api/users?page=${pageIndex}`, fetcher);
 
-  const [activeUser, setActiveUser] = useState<null | any>(null);
   const [activeUserId, setActiveUserId] = useState<null | number>(null);
   const [shouldFetchUser, setShouldFetchUser] = useState(false);
   const {
-    data: user,
-    error: errorLoadUser,
-    isLoading: userIsLoading,
+    data: activeUser,
+    error: errorLoadActiveUser,
+    isLoading: activeUserIsLoading,
   } = useSWR(() => (shouldFetchUser ? `https://reqres.in/api/users/${activeUserId}` : null), fetcher);
-
-  useEffect(() => {
-    if (user) {
-      setActiveUser(user);
-    }
-  }, [user]);
 
   const handleUserCardClick = (userId: number) => {
     setActiveUserId(userId);
     setShouldFetchUser(true);
-  };
-
-  const handleDialogOpenChange = (open: boolean) => {
-    if (!open) {
-      setActiveUser(null);
-    }
   };
 
   if (error) return <div className='text-center mt-6'>Ошибка загрузки</div>;
@@ -62,7 +49,7 @@ export default function Home() {
         <ul className='flex gap-3 flex-wrap justify-center items-center'>
           {data.data.map((user: UserType) => (
             <li key={user.id}>
-              <Dialog onOpenChange={handleDialogOpenChange}>
+              <Dialog>
                 <DialogTrigger asChild>
                   <Card className='cursor-pointer' onClick={() => handleUserCardClick(user.id)}>
                     <CardHeader>
@@ -75,9 +62,9 @@ export default function Home() {
                     </CardContent>
                   </Card>
                 </DialogTrigger>
-                <DialogContent className='sm:max-w-[425px]' aria-describedby={undefined}>
-                  {userIsLoading && <DialogTitle className='text-center mt-6'>Загрузка...</DialogTitle>}
-                  {errorLoadUser && <DialogTitle className='text-center mt-6'>Ошибка загрузки</DialogTitle>}
+                <DialogContent className='sm:max-w-[425px] min-h-80' aria-describedby={undefined}>
+                  {activeUserIsLoading && <DialogTitle className='text-center mt-6'>Загрузка...</DialogTitle>}
+                  {errorLoadActiveUser && <DialogTitle className='text-center mt-6'>Ошибка загрузки</DialogTitle>}
                   {activeUser && (
                     <>
                       <DialogHeader>
