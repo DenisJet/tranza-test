@@ -1,101 +1,117 @@
-import Image from "next/image";
+'use client';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTrigger } from '@/components/ui/dialog';
+import { fetcher } from '@/api/fetcher';
+import { useStore } from '@/store/store';
+import { DialogDescription, DialogTitle } from '@radix-ui/react-dialog';
+import Image from 'next/image';
+import { useEffect, useState } from 'react';
+import useSWR from 'swr';
+
+export type UserType = {
+  id: number;
+  email: string;
+  first_name: string;
+  last_name: string;
+  avatar: string;
+};
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const pageIndex = useStore((state) => state.pageIndex);
+  const increasePageIndex = useStore((state) => state.increasePageIndex);
+  const decreasePageIndex = useStore((state) => state.decreasePageIndex);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
+  const { data, error, isLoading } = useSWR(`https://reqres.in/api/users?page=${pageIndex}`, fetcher);
+
+  const [activeUser, setActiveUser] = useState<null | any>(null);
+  const [activeUserId, setActiveUserId] = useState<null | number>(null);
+  const [shouldFetchUser, setShouldFetchUser] = useState(false);
+  const {
+    data: user,
+    error: errorLoadUser,
+    isLoading: userIsLoading,
+  } = useSWR(() => (shouldFetchUser ? `https://reqres.in/api/users/${activeUserId}` : null), fetcher);
+
+  useEffect(() => {
+    if (user) {
+      setActiveUser(user);
+    }
+  }, [user]);
+
+  const handleUserCardClick = (userId: number) => {
+    setActiveUserId(userId);
+    setShouldFetchUser(true);
+  };
+
+  const handleDialogOpenChange = (open: boolean) => {
+    if (!open) {
+      setActiveUser(null);
+    }
+  };
+
+  if (error) return <div className='text-center mt-6'>Ошибка загрузки</div>;
+  if (isLoading) return <div className='text-center mt-6'>Загрузка...</div>;
+
+  return (
+    <section className='max-w-3xl mx-auto px-2.5 flex flex-col gap-3'>
+      <header className='my-8'>
+        <h1 className='text-center font-bold text-xl uppercase'>Наши специалисты</h1>
+      </header>
+      <main>
+        <ul className='flex gap-3 flex-wrap justify-center items-center'>
+          {data.data.map((user: UserType) => (
+            <li key={user.id}>
+              <Dialog onOpenChange={handleDialogOpenChange}>
+                <DialogTrigger asChild>
+                  <Card className='cursor-pointer' onClick={() => handleUserCardClick(user.id)}>
+                    <CardHeader>
+                      <CardTitle>
+                        {user.first_name} {user.last_name}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <Image src={user.avatar} alt='avatar' width={150} height={150} />
+                    </CardContent>
+                  </Card>
+                </DialogTrigger>
+                <DialogContent className='sm:max-w-[425px]' aria-describedby={undefined}>
+                  {userIsLoading && <DialogTitle className='text-center mt-6'>Загрузка...</DialogTitle>}
+                  {errorLoadUser && <DialogTitle className='text-center mt-6'>Ошибка загрузки</DialogTitle>}
+                  {activeUser && (
+                    <>
+                      <DialogHeader>
+                        <DialogTitle>
+                          {activeUser.data.first_name} {activeUser?.data.last_name}
+                        </DialogTitle>
+                        <DialogDescription>{activeUser?.data.email}.</DialogDescription>
+                      </DialogHeader>
+                      <DialogDescription className='flex gap-5'>
+                        <Image
+                          src={activeUser.data.avatar ? activeUser.data.avatar : '/user.svg'}
+                          alt='avatar'
+                          width={150}
+                          height={150}
+                        />
+                        <span>{activeUser.support.text}</span>
+                      </DialogDescription>
+                    </>
+                  )}
+                </DialogContent>
+              </Dialog>
+            </li>
+          ))}
+        </ul>
       </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
+      <footer className='flex justify-center items-center gap-5'>
+        <Button variant='outline' onClick={decreasePageIndex} disabled={pageIndex === 1}>
+          Назад
+        </Button>
+        <p>{pageIndex}</p>
+        <Button variant='outline' onClick={increasePageIndex} disabled={pageIndex === 2}>
+          Вперёд
+        </Button>
       </footer>
-    </div>
+    </section>
   );
 }
